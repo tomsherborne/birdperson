@@ -18,9 +18,9 @@ app.use(bodyParser.json());
 
 /*
   IMPLEMENT POST REQUEST RESPONSE
-
-//app.post('/lookup', logreq,);
-
+*/
+app.post('/lookup',logreq,makeTwitterRequest);
+/*
   POST REQUEST FLOW ->
       loqreq
       make twitter request
@@ -39,6 +39,12 @@ function logreq(req, res, next){
   next();
 }
 
+function makeTwitterRequest(req, res, next) {
+  //make API request
+  //res.send(responseData);
+
+  //test in Postman on `POST localhost:3000/lookup`
+}
 /*
   LEGACY FUNCTION FROM DAY-4 WORK
 

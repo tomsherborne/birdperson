@@ -29,6 +29,6 @@
     "body-parser": "^1.17.2",
     "cors": "^2.8.4",
     "express": "^4.15.4",
-    "oauthio-web": "^0.6.1"
+    "oauth": "^0.9.12"
   }
 }

@@ -1,15 +1,25 @@
 /*** Require in modules here ***/
-const express = require('express');
-const bodyParser = require('body-parser'); // Uncomment for Bonus Challenge 1
-const keys = require('./keys.js');
-
+const express     = require('express');
+const bodyParser  = require('body-parser');
+const OAuth       = require('OAuth');
+const keys        = require('./keys.js');
 var app = express()
 
-/*** Use built-in Express middleware here ***/
+/** BUILT IN EXPRESS MIDDLEWARE **/
 app.use(express.static(__dirname));
-
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
+/** SET UP OAUTH AUTHENTICATION FOR TWITTER **/
+var oauth = new OAuth.OAuth(
+      'https://api.twitter.com/oauth/request_token',
+      'https://api.twitter.com/oauth/access_token',
+      keys.TWITCONSUMERKEY,
+      keys.TWITCONSUMERSECRET,
+      '1.0A',
+      null,
+      'HMAC-SHA1'
+);
 
 /*
   IMPLEMENT GET REQUEST RESPONSE
@@ -19,7 +29,7 @@ app.use(bodyParser.json());
 /*
   IMPLEMENT POST REQUEST RESPONSE
 */
-app.post('/lookup',logreq,makeTwitterRequest);
+app.post('/lookup',[logreq, makeTwitterRequest]);
 /*
   POST REQUEST FLOW ->
       loqreq
@@ -33,18 +43,28 @@ use req.locals to pass data between middleware
 */
 
 function logreq(req, res, next){
-  console.log('LOGREQ METHOD: ',req.method);
-  console.log('LOGREQ    URL: ',req.url);
-  console.log('LOGREQ HANDLE:' ,req.body.search);
+  console.log('LOGREQ METHOD: ', req.method);
+  console.log('LOGREQ    URL: ', req.url);
+  console.log('LOGREQ HANDLE: ', req.body.search ? req.body.search : 'None');
   next();
 }
 
 function makeTwitterRequest(req, res, next) {
-  //make API request
-  //res.send(responseData);
 
-  //test in Postman on `POST localhost:3000/lookup`
+  oauth.get(
+    'https://api.twitter.com/1.1/trends/place.json?id=23424977',
+    keys.TWITACCESSTOKEN,
+    //you can get it at dev.twitter.com for your own apps
+    keys.TWITACCESSTOKENSECRET,
+    //you can get it at dev.twitter.com for your own apps
+    function (e, tdata, tres){
+      if (e) console.error(e);
+
+      res.send(JSON.parse(tdata));
+    });
+  //test in Postman on `POST localhost:8080/lookup`
 }
+
 /*
   LEGACY FUNCTION FROM DAY-4 WORK
 
@@ -74,7 +94,6 @@ function searchData(req, res, next) {
   res.send(searchOutput)
 }
 */
-
 
 // set the port of our application
 // process.env.PORT lets the port be set by Heroku

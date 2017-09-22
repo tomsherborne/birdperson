@@ -1,4 +1,4 @@
-
+const keys = require('./keys.js')
 
 
 
@@ -30,7 +30,7 @@ function main(params) {
 }
 
 const defaultParameters = {
-  'textToAnalyze': 'Haha aw thank you Nish. You\'re like the sister I never had. See what I did there? 😉👊🏾🙌🏾',
+  'textToAnalyze': 'In substance PM May is bringing no more clarity to London\'s positions. I am even more concerned now. #florencespeech',
   'username':      '60db72b0-38ed-4e28-bd34-4453f6907220',
   'password':      'GIyYdgz8omao',
   'url' : 'https://gateway.watsonplatform.net/tone-analyzer/api',

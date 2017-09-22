@@ -18,10 +18,19 @@ app.use(bodyParser.json());
 
 /*
   IMPLEMENT POST REQUEST RESPONSE
-*/
+
 //app.post('/lookup', logreq,);
 
-/*** Write functions here, to be used as Express middleware ***/
+  POST REQUEST FLOW ->
+      loqreq
+      make twitter request
+      process twitter return
+      make watson request
+      process watson request
+      send back data
+
+use req.locals to pass data between middleware
+*/
 
 function logreq(req, res, next){
   console.log('LOGREQ METHOD: ',req.method);

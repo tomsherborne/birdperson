@@ -2,8 +2,15 @@
 const express     = require('express');
 const bodyParser  = require('body-parser');
 const OAuth       = require('OAuth');
+const ToneAnalyzerV3 = require('watson-developer-cloud/tone-analyzer/v3');
 const keys        = require('./keys.js');
 var app = express();
+
+/** API ENDPOINTS **/
+const TWITTER_REQUEST_ENDPOINT_PERSON = 'https://api.twitter.com/1.1/users/show.json?';
+const TWITTER_REQUEST_ENDPOINT_TWEETS = 'https://api.twitter.com/1.1/statuses/user_timeline.json?';
+const TWITTER_REQUEST_ENDPOINT_MENTIONS = 'https://api.twitter.com/1.1/search/tweets.json?';
+const WATSON_TONE_ANALYZER_URL = 'https://gateway.watsonplatform.net/tone-analyzer/api';
 
 /** BUILT IN EXPRESS MIDDLEWARE **/
 app.use(express.static(__dirname));
@@ -22,16 +29,29 @@ var oauth = new OAuth.OAuth(
       'HMAC-SHA1'
 );
 
-/*
-  IMPLEMENT GET REQUEST RESPONSE
-*/
-//app.get('/lookup', logreq, );
+/** SET UP WATSON OBJECT **/
+const toneAnalyzer = new ToneAnalyzerV3({
+  'username': keys.WATSONUSER,
+  'password': keys.WATSONPW,
+  'version_date': '2016-05-20',
+  'url':WATSON_TONE_ANALYZER_URL,
+  'use_unauthenticated':false
+});
 
 /*
   IMPLEMENT POST REQUEST RESPONSE
 */
-//app.post('/lookup',[logreq, makeTwitterRequest, buildResponse]);
-app.post('/lookup',[logreq, mockResponse]);
+app.post('/lookup',[logreq,
+   makeTwitterRequestPerson,
+   makeTwitterRequestTweets,
+   makeWatsonRequestTweets,
+   makeTwitterRequestMentions,
+   makeWatsonRequestMentions,
+   donezo
+   //buildResponse
+ ]);
+
+//app.post('/lookup',[logreq, mockResponse]); % FOR FRONT END TESTING
 /*
   POST REQUEST FLOW ->
       loqreq
@@ -45,113 +65,149 @@ use req.locals to pass data between middleware
 */
 
 function logreq(req, res, next){
-  console.log('LOGREQ METHOD: ', req.method);
-  console.log('LOGREQ    URL: ', req.url);
-  console.log('LOGREQ HANDLE: ', req.body.search ? req.body.search : 'None');
+  console.log('LOG: METHOD: ', req.method);
+  console.log('LOG: URL: ', req.url);
+  console.log('LOG: HANDLE: ', req.body.search);
   next();
 }
 
-const testparams = {
-  "dummyhandle":"ElizabethUKRPG",
-};
-
-function makeTwitterRequest(req, res, next) {
-  oauth.get(
-    `https://api.twitter.com/1.1/users/show.json?screen_name=${testparams.dummyhandle}`,
-    keys.TWITACCESSTOKEN,
-    keys.TWITACCESSTOKENSECRET,
-    function (e, tdata, tres){
-      if (e) console.error(e);
-      req.mw_params.profile = JSON.parse(tdata);
-      next();
-    });
-  //test in Postman on `POST localhost:8080/lookup`
+function makeTwitterRequest(endpoint) {
+  return new Promise((resolve, reject) => {
+    oauth.get(
+      endpoint,
+      keys.TWITACCESSTOKEN,
+      keys.TWITACCESSTOKENSECRET,
+      function (e, tdata, tres){
+        if (e) {
+          reject(e);
+        }
+        else {
+          console.log(`LOG: SUCCESSFUL AT ${endpoint}`);
+          resolve(JSON.parse(tdata));
+        }
+      });
+  });
 }
 
+function makeWatsonRequest(dialog) {
+  return new Promise((resolve, reject) => {
+    toneAnalyzer.tone({'text': dialog}, (err, res) => {
+      if(err) reject(err);
+      else {
+        console.log(`LOG: SUCCESSFUL AT ${WATSON_TONE_ANALYZER_URL}`);
+        resolve(res);
+      }
+    }); //end Watson Call
+  }); //end promise
+}
 
-/* FRONT END DUMMY OBJECTS */
-function mockResponse(req, res, next) {
-  res.send(fakeReply);
+function makeWatsonRequestTweets(req, res, next) {
+  makeWatsonRequest(req.mw_params.dialog_watson_person)
+  .then(response => {
+    req.mw_params['watsonPerson'] = response.document_tone;
+    next()
+  })
+  .catch(e => console.error('ERROR: ',e));
+}
+
+function makeWatsonRequestMentions(req, res, next) {
+  makeWatsonRequest(req.mw_params.dialog_watson_mention)
+  .then(response => {
+    console.log(response);
+    req.mw_params['watsonMentions'] = response;
+    res.send(response.document_tone);
+    //next()
+  })
+  .catch(e => console.error('ERROR: ',e));
+}
+
+function makeTwitterRequestPerson(req, res, next) {
+  makeTwitterRequest(TWITTER_REQUEST_ENDPOINT_PERSON+`screen_name=${req.body.search}`)
+  .then(response => {
+    req.mw_params['profile'] = response;
+    next()
+  })
+  .catch(e => console.error('ERROR: ',e));
+}
+
+function makeTwitterRequestTweets(req, res, next) {
+  makeTwitterRequest(TWITTER_REQUEST_ENDPOINT_TWEETS+`screen_name=${req.body.search}`)
+  .then(response => {
+    req.mw_params['tweets'] = response;
+    req.mw_params.dialog_watson_person = JSON.parse(JSON.stringify(req.mw_params['tweets'])).map(elem => elem.text).join('\n');
+    next();
+  })
+  .catch(e => console.error('ERROR: ',e));
+}
+
+function makeTwitterRequestMentions(req, res, next) {
+  makeTwitterRequest(TWITTER_REQUEST_ENDPOINT_MENTIONS+`count=100&include_entities=false&q=${req.body.search}`)
+    .then(response => {
+    req.mw_params['mentions'] = response;
+    req.mw_params.dialog_watson_mention = response.statuses.map(elem => elem.text).join('\n');
+    next();
+  })
+  .catch(e => console.error('ERROR: ',e));
+}
+
+function donezo(req,res,next) {
+  console.log('done');
+  res.send({'hello':'done'});
 }
 
 function buildResponse(req, res, next) {
   let profile = req.mw_params.profile;
+  let tweets = req.mw_params.tweets;
+  let mentions = req.mw_params.mentions;
+
   let watsonPerson = req.mw_params.watsonPerson;
-  let watsonRetweet = req.mw_params.watsonRetweet;
+  //let watsonMention = req.mw_params.watsonMention;
+  let tmp = watsonPerson.document_tone.tone_categories[0].tones;
 
   const reply = {
-    'handle':profile.screen_name,
-    'name':profile.name,
+    'handle': profile.screen_name,
+    'name':   profile.name,
     'description':profile.description,
-    'url':profile.url,
-    'tweets':[
+    'url':    profile.url,
+    'user_id':profile.id,
+    'img':profile.profile_image_url_https,
+    'tweets':
+      req.mw_params['tweets'].map(function(elem) {
+        return {
+          //'text':elem.text,
+          'id':elem.id,
+          'id_str':elem.id_str,
+        }
+      })
+    ,
+    "emotion_profile":
+      watsonPerson.tone_categories[0].tones.map(
+        function(elem){
+          return {
+            'tone':elem.tone_id,
+            'score':elem.score,
+          }
+      }),
+    /*
+    'mentions':[
       {
           //'id':profile.status.id,
           //'text':profile.status.text,
           'dummy':'object',
       }
     ],
-    "emotion_profile":{
-      "anger":watsonPerson.document_tone.tone_categories[0].tones[0].tone_id,
-      "disgust":watsonPerson.document_tone.tone_categories[0].tones[1].tone_id,
-      "fear":watsonPerson.document_tone.tone_categories[0].tones[2].tone_id,
-      "joy":watsonPerson.document_tone.tone_categories[0].tones[3].tone_id,
-      "sadness":watsonPerson.document_tone.tone_categories[0].tones[4].tone_id,
+    "mentions_emotion_profile":{
+      "anger":watsonMention.document_tone.tone_categories[0].tones[0].tone_id,
+      "disgust":watsonMention.document_tone.tone_categories[0].tones[1].tone_id,
+      "fear":watsonMention.document_tone.tone_categories[0].tones[2].tone_id,
+      "joy":watsonMention.document_tone.tone_categories[0].tones[3].tone_id,
+      "sadness":watsonMention.document_tone.tone_categories[0].tones[4].tone_id,
     },
-    'retweets':[
-      {
-          //'id':profile.status.id,
-          //'text':profile.status.text,
-          'dummy':'object',
-      }
-    ],
-    "retweets_emotion_profile":{
-      "anger":watsonRetweet.document_tone.tone_categories[0].tones[0].tone_id,
-      "disgust":watsonRetweet.document_tone.tone_categories[0].tones[1].tone_id,
-      "fear":watsonRetweet.document_tone.tone_categories[0].tones[2].tone_id,
-      "joy":watsonRetweet.document_tone.tone_categories[0].tones[3].tone_id,
-      "sadness":watsonRetweet.document_tone.tone_categories[0].tones[4].tone_id,
-    },
+    */
   };
 
   res.send(reply);
 }
-const fakeReply = {
-    "handle": "ElizabethUKRPG",
-    "name": "Queen Elizabeth II",
-    "description": "The official Twitter profile for Her Majesty Queen Elizabeth II of the United Kingdom in UKRPG.",
-    "url": "https://t.co/6tw27Wj1lW",
-    "tweets": [
-        {
-            "dummy": "object"
-        }
-    ],
-    "emotion_profile": {
-        "anger": 0.58,
-        "disgust": 0.47,
-        "fear": 0.55,
-        "joy": 0.64,
-        "sadness": 0.19
-    },
-    "retweets": [
-        {
-            "dummy": "object"
-        }
-    ],
-    "retweets_emotion_profile": {
-        "anger": 0.99,
-        "disgust": 0.11,
-        "fear": 0.02,
-        "joy": 0.45,
-        "sadness": 0.3
-    }
-}
-
-
-/*
-  LEGACY LINES FROM DAY-4 WORK
-//  var searchKey = req.body.search ? req.body.search: 'work';
-*/
 
 // set the port of our application
 // process.env.PORT lets the port be set by Heroku

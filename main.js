@@ -41,11 +41,24 @@ function remove(id) {
     return elem.parentNode.removeChild(elem);
 }
 
-
+var serverReply = {};
 
 $("#button1").click(function(){
-  $.post("http://localhost:3001/lookup", function (responseData,textStatus) {
-    
+    $.ajax({
+        type:'POST',
+        url: './lookup',
+        data: {
+            'search':textInput.value
+        },
+        dataType: 'json',
+        success: function(responseData,textStatus) {
+            console.log('SERVER RESPONSE RECEIVED');
+            serverReply = responseData;
+        }
+    });
+    var responseData = serverReply;
+    console.log(responseData);
+    {
     if ($('#example').find('#test').length){
 
     }else{
@@ -233,7 +246,6 @@ $("#button1").click(function(){
 
     });
         
-        
-  })
-})
-
+    
+    }
+});

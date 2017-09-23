@@ -3,7 +3,7 @@ const express     = require('express');
 const bodyParser  = require('body-parser');
 const OAuth       = require('OAuth');
 const keys        = require('./keys.js');
-var app = express()
+var app = express();
 
 /** BUILT IN EXPRESS MIDDLEWARE **/
 app.use(express.static(__dirname));
@@ -30,7 +30,8 @@ var oauth = new OAuth.OAuth(
 /*
   IMPLEMENT POST REQUEST RESPONSE
 */
-app.post('/lookup',[logreq, makeTwitterRequest]);
+//app.post('/lookup',[logreq, makeTwitterRequest]);
+app.post('/lookup',[logreq, mockResponse]);
 /*
   POST REQUEST FLOW ->
       loqreq
@@ -64,6 +65,21 @@ function makeTwitterRequest(req, res, next) {
   //test in Postman on `POST localhost:8080/lookup`
 }
 
+function mockResponse(req, res, next) {
+  res.send(fakeReply);
+}
+
+const fakeReply = {
+  "handle":"ElizabethUKRPG",
+  "bio":"The official Twitter\'s profile for Her Majesty Queen Elizabeth II of the United Kingdom in UKRPG.",
+  "emotion_profile":{
+    "anger":0.58,
+    "disgust":047,
+    "fear":0.55,
+    "joy":0.64,
+    "sadness":0.19
+  },
+}
 /*
   LEGACY FUNCTION FROM DAY-4 WORK
 

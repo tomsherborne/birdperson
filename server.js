@@ -30,7 +30,7 @@ var oauth = new OAuth.OAuth(
 /*
   IMPLEMENT POST REQUEST RESPONSE
 */
-//app.post('/lookup',[logreq, makeTwitterRequest]);
+//app.post('/lookup',[logreq, makeTwitterRequest, buildResponse]);
 app.post('/lookup',[logreq, mockResponse]);
 /*
   POST REQUEST FLOW ->
@@ -51,63 +51,106 @@ function logreq(req, res, next){
   next();
 }
 
-function makeTwitterRequest(req, res, next) {
+const testparams = {
+  "dummyhandle":"ElizabethUKRPG",
+};
 
+function makeTwitterRequest(req, res, next) {
   oauth.get(
-    'https://api.twitter.com/1.1/trends/place.json?id=23424977',
+    `https://api.twitter.com/1.1/users/show.json?screen_name=${testparams.dummyhandle}`,
     keys.TWITACCESSTOKEN,
     keys.TWITACCESSTOKENSECRET,
     function (e, tdata, tres){
       if (e) console.error(e);
-      req.mw_params.twit = JSON.parse(tdata);
-      res.send(req.mw_params.twit);
+      req.mw_params.profile = JSON.parse(tdata);
+      next();
     });
   //test in Postman on `POST localhost:8080/lookup`
 }
 
+
+/* FRONT END DUMMY OBJECTS */
 function mockResponse(req, res, next) {
   res.send(fakeReply);
 }
 
+function buildResponse(req, res, next) {
+  let profile = req.mw_params.profile;
+  let watsonPerson = req.mw_params.watsonPerson;
+  let watsonRetweet = req.mw_params.watsonRetweet;
+
+  const reply = {
+    'handle':profile.screen_name,
+    'name':profile.name,
+    'description':profile.description,
+    'url':profile.url,
+    'tweets':[
+      {
+          //'id':profile.status.id,
+          //'text':profile.status.text,
+          'dummy':'object',
+      }
+    ],
+    "emotion_profile":{
+      "anger":watsonPerson.document_tone.tone_categories[0].tones[0].tone_id,
+      "disgust":watsonPerson.document_tone.tone_categories[0].tones[1].tone_id,
+      "fear":watsonPerson.document_tone.tone_categories[0].tones[2].tone_id,
+      "joy":watsonPerson.document_tone.tone_categories[0].tones[3].tone_id,
+      "sadness":watsonPerson.document_tone.tone_categories[0].tones[4].tone_id,
+    },
+    'retweets':[
+      {
+          //'id':profile.status.id,
+          //'text':profile.status.text,
+          'dummy':'object',
+      }
+    ],
+    "retweets_emotion_profile":{
+      "anger":watsonRetweet.document_tone.tone_categories[0].tones[0].tone_id,
+      "disgust":watsonRetweet.document_tone.tone_categories[0].tones[1].tone_id,
+      "fear":watsonRetweet.document_tone.tone_categories[0].tones[2].tone_id,
+      "joy":watsonRetweet.document_tone.tone_categories[0].tones[3].tone_id,
+      "sadness":watsonRetweet.document_tone.tone_categories[0].tones[4].tone_id,
+    },
+  };
+
+  res.send(reply);
+}
 const fakeReply = {
-  "handle":"ElizabethUKRPG",
-  "bio":"The official Twitter\'s profile for Her Majesty Queen Elizabeth II of the United Kingdom in UKRPG.",
-  "emotion_profile":{
-    "anger":0.58,
-    "disgust":047,
-    "fear":0.55,
-    "joy":0.64,
-    "sadness":0.19
-  },
+    "handle": "ElizabethUKRPG",
+    "name": "Queen Elizabeth II",
+    "description": "The official Twitter profile for Her Majesty Queen Elizabeth II of the United Kingdom in UKRPG.",
+    "url": "https://t.co/6tw27Wj1lW",
+    "tweets": [
+        {
+            "dummy": "object"
+        }
+    ],
+    "emotion_profile": {
+        "anger": 0.58,
+        "disgust": 0.47,
+        "fear": 0.55,
+        "joy": 0.64,
+        "sadness": 0.19
+    },
+    "retweets": [
+        {
+            "dummy": "object"
+        }
+    ],
+    "retweets_emotion_profile": {
+        "anger": 0.99,
+        "disgust": 0.11,
+        "fear": 0.02,
+        "joy": 0.45,
+        "sadness": 0.3
+    }
 }
+
+
 /*
-  LEGACY FUNCTION FROM DAY-4 WORK
-
-function sendData(req, res, next){
-  if(req.path == '/events') {
-    res.send(events);
-  }
-  else if(req.path == '/activities')
-    res.send(activities);
-  }
-
-function searchData(req, res, next) {
-  var searchKey = req.body.search ? req.body.search: 'work';
-
-  console.log("searchKey: ",searchKey);
-  console.log("path: ",req.path);
-
-  if(req.path == '/events') {
-    page=events;
-  }
-  else if(req.path == '/activities') {
-    page=activities;
-  }
-
-  searchOutput = page.filter(elem => Object.values(elem).includes(searchKey)==true);
-  console.log(searchOutput)
-  res.send(searchOutput)
-}
+  LEGACY LINES FROM DAY-4 WORK
+//  var searchKey = req.body.search ? req.body.search: 'work';
 */
 
 // set the port of our application

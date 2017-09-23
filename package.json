@@ -1,0 +1,34 @@
+{
+  "name": "birdperson",
+  "version": "1.0.0",
+  "description": "Twitter sentiment site",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trsherborne/birdperson.git"
+  },
+  "keywords": [
+    "twitter",
+    "machine-learning",
+    "nlp",
+    "sentiment",
+    "watson",
+    "api",
+    "codesmith"
+  ],
+  "author": "Bogdan Anton, Muhtasim Muhib, Tom Sherborne",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/trsherborne/birdperson/issues"
+  },
+  "homepage": "https://github.com/trsherborne/birdperson#readme",
+  "dependencies": {
+    "body-parser": "^1.17.2",
+    "cors": "^2.8.4",
+    "express": "^4.15.4",
+    "oauth": "^0.9.12"
+  }
+}

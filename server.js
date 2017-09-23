@@ -9,6 +9,7 @@ var app = express()
 app.use(express.static(__dirname));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(function(req,res,next){req.mw_params = {};next()});
 
 /** SET UP OAUTH AUTHENTICATION FOR TWITTER **/
 var oauth = new OAuth.OAuth(
@@ -54,13 +55,11 @@ function makeTwitterRequest(req, res, next) {
   oauth.get(
     'https://api.twitter.com/1.1/trends/place.json?id=23424977',
     keys.TWITACCESSTOKEN,
-    //you can get it at dev.twitter.com for your own apps
     keys.TWITACCESSTOKENSECRET,
-    //you can get it at dev.twitter.com for your own apps
     function (e, tdata, tres){
       if (e) console.error(e);
-
-      res.send(JSON.parse(tdata));
+      req.mw_params.twit = JSON.parse(tdata);
+      res.send(req.mw_params.twit);
     });
   //test in Postman on `POST localhost:8080/lookup`
 }

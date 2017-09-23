@@ -52,22 +52,9 @@ app.post('/lookup', [logreq,
     makeWatsonRequestTweets,
     makeTwitterRequestMentions,
     makeWatsonRequestMentions,
-    donezo
-    //buildResponse
+    buildResponse
 ]);
 
-//app.post('/lookup',[logreq, mockResponse]); % FOR FRONT END TESTING
-/*
-  POST REQUEST FLOW ->
-      loqreq
-      make twitter request
-      process twitter return
-      make watson request
-      process watson request
-      send back data
-
-use req.locals to pass data between middleware
-*/
 
 function logreq(req, res, next) {
     console.log('LOG: METHOD: ', req.method);
@@ -103,8 +90,8 @@ function makeWatsonRequest(dialog) {
                 console.log(`LOG: SUCCESSFUL AT ${WATSON_TONE_ANALYZER_URL}`);
                 resolve(res);
             }
-        }); //end Watson Call
-    }); //end promise
+        });
+    });
 }
 
 function makeWatsonRequestTweets(req, res, next) {
@@ -119,10 +106,8 @@ function makeWatsonRequestTweets(req, res, next) {
 function makeWatsonRequestMentions(req, res, next) {
     makeWatsonRequest(req.mw_params.dialog_watson_mention)
         .then(response => {
-            console.log(response);
-            req.mw_params['watsonMentions'] = response;
-            res.send(response.document_tone);
-            //next()
+            req.mw_params['watsonMentions'] = response.document_tone;
+            next()
         })
         .catch(e => console.error('ERROR: ', e));
 }
@@ -142,7 +127,7 @@ function makeTwitterRequestTweets(req, res, next) {
             req.mw_params['tweets'] = response;
             req.mw_params.dialog_watson_person = JSON.parse(JSON.stringify(req.mw_params['tweets']))
                 .map(elem => elem.text)
-                .join('\n');
+                  .join('\n');
             next();
         })
         .catch(e => console.error('ERROR: ', e));
@@ -152,28 +137,20 @@ function makeTwitterRequestMentions(req, res, next) {
     makeTwitterRequest(TWITTER_REQUEST_ENDPOINT_MENTIONS + `count=100&include_entities=false&q=${req.body.search}`)
         .then(response => {
             req.mw_params['mentions'] = response;
-            req.mw_params.dialog_watson_mention = response.statuses.map(elem => elem.text)
+            req.mw_params.dialog_watson_mention = response.statuses.map(elem => elem.text.replace(`@${req.body.search}`,``))
                 .join('\n');
             next();
         })
         .catch(e => console.error('ERROR: ', e));
 }
 
-function donezo(req, res, next) {
-    console.log('done');
-    res.send({
-        'hello': 'done'
-    });
-}
-
 function buildResponse(req, res, next) {
+
     let profile = req.mw_params.profile;
     let tweets = req.mw_params.tweets;
     let mentions = req.mw_params.mentions;
-
     let watsonPerson = req.mw_params.watsonPerson;
-    //let watsonMention = req.mw_params.watsonMention;
-    let tmp = watsonPerson.document_tone.tone_categories[0].tones;
+    let watsonMentions = req.mw_params.watsonMentions;
 
     const reply = {
         'handle': profile.screen_name,
@@ -184,7 +161,6 @@ function buildResponse(req, res, next) {
         'img': profile.profile_image_url_https,
         'tweets': req.mw_params['tweets'].map(function (elem) {
             return {
-                //'text':elem.text,
                 'id': elem.id,
                 'id_str': elem.id_str,
             }
@@ -196,24 +172,22 @@ function buildResponse(req, res, next) {
                     'score': elem.score,
                 }
             }),
-        /*
-        'mentions':[
-          {
-              //'id':profile.status.id,
-              //'text':profile.status.text,
-              'dummy':'object',
-          }
-        ],
-        "mentions_emotion_profile":{
-          "anger":watsonMention.document_tone.tone_categories[0].tones[0].tone_id,
-          "disgust":watsonMention.document_tone.tone_categories[0].tones[1].tone_id,
-          "fear":watsonMention.document_tone.tone_categories[0].tones[2].tone_id,
-          "joy":watsonMention.document_tone.tone_categories[0].tones[3].tone_id,
-          "sadness":watsonMention.document_tone.tone_categories[0].tones[4].tone_id,
-        },
-        */
-    };
 
+        'mentions':req.mw_params['mentions'].statuses.map(function (elem) {
+            return {
+                'id': elem.id,
+                'id_str': elem.id_str,
+            }
+        }),
+
+        "mentions_emotion_profile": watsonMentions.tone_categories[0].tones.map(
+            function (elem) {
+                return {
+                    'tone': elem.tone_id,
+                    'score': elem.score,
+                }
+            }),
+    };
     res.send(reply);
 }
 

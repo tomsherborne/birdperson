@@ -27,8 +27,8 @@
   "homepage": "https://github.com/trsherborne/birdperson#readme",
   "dependencies": {
     "body-parser": "^1.17.2",
-    "cors": "^2.8.4",
     "express": "^4.15.4",
-    "oauth": "^0.9.12"
+    "oauth": "^0.9.12",
+    "watson-developer-cloud": "^2.39.0"
   }
 }
